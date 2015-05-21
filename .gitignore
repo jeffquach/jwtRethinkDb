@@ -1,0 +1,4 @@
+node_modules
+private.pem
+public.pem
+rethinkdb_data

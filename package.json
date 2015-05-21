@@ -1,0 +1,13 @@
+{
+  "name": "jwtRethinkDb",
+  "main": "server.js",
+  "dependencies": {
+    "bcrypt": "^0.8.3",
+    "body-parser": "^1.12.3",
+    "express": "^4.12.3",
+    "jsonwebtoken": "^5.0.0",
+    "morgan": "^1.5.2",
+    "rethinkdb": "^2.0.0",
+    "thinky": "^2.0.2"
+  }
+}
