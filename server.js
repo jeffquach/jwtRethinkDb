@@ -1,13 +1,13 @@
-var express     = require('express');
-var app         = express();
-var bodyParser  = require('body-parser');
-var morgan      = require('morgan');
+var express = require('express');
+var app = express();
+var bodyParser = require('body-parser');
+var morgan = require('morgan');
 var fs = require("fs");
 var bcrypt = require("bcrypt");
-var jwt    = require('jsonwebtoken');
-var config = require('./config');
-var User   = require('./app/models/user');
+var jwt = require('jsonwebtoken');
+var User = require('./app/models/user');
 var crypto = require('crypto');
+var util = require('util');
 
 var port = process.env.PORT || 3000;
 
@@ -26,19 +26,20 @@ app.get('/', function(req, res) {
     res.send('Hello! The API is at http://localhost:' + port + '/api');
 });
 app.get("/setup",function(req,res){
-    generateRefreshToken(function(id){
-        darmish = new User({ 
-            name: 'darmish', 
-            password: 'darmish',
+    generateRefreshToken(function(token){
+        var newUser = new User({ 
+            name: req.headers["name"], 
+            password: req.headers["password"],
             admin: true,
-            refresh_token:id 
+            refresh_token:token 
         });
         // save the sample user
-        darmish.save(function(err) {
-            if (err) throw err;
-            console.log('User saved successfully');
-            res.json({ success: true, uuid: id});
-        });
+        newUser.save().then(function(user){
+            res.send({refresh_token:token});
+        }).error(function(err){
+            console.log(err);
+            res.send({message:"An error occurred", error:err});
+        })
     })
 })
 function generateRefreshToken(cb){
@@ -101,14 +102,16 @@ function keyGenerationCallback(user,cb){
 var apiRoutes = express.Router();
 
 apiRoutes.post("/authenticate",function(req,res,next){
-    User.findOne({name: req.body.name}, function(err,user){
-        if (err) {throw err;};
+    User.filter({name:req.body.name}).limit(1).run().then(function(user){
         if (!user) {
             res.json({success:false,message:"Authentication failed, probs a wrong password or somethang!"});
         }else if(user){
-            comparePassword(user,req.body.password,true,req,res,next);
+            comparePassword(user[0],req.body.password,true,req,res,next);
         }
-    });
+    }).error(function(err){
+        if (err) {throw err;};
+        res.end({message:"An error occurred", error:err});
+    })
 });
 
 // Place middleware for jwt code above here to get the code to run for these routes that require the webtoken
@@ -122,14 +125,15 @@ apiRoutes.use(function(req,res,next){
                     var refresh_token = req.query.refresh_token || req.headers['x-refresh-token'];
                     var username = req.query.username;
                     if (username) {
-                        User.findOne({name:username},function(err,user){
-                            if (err) {next(err)};
+                        User.filter({name:username}).limit(1).run().then(function(user){
                             if (!user) {
                                 res.status(403).json({message:"That user doesn't exist!"});
                             }else{
-                                comparePassword(user,refresh_token,false,req,res,next);
+                                comparePassword(user[0],refresh_token,false,req,res,next);
                             }
-                        });
+                        }).error(function(err){
+                            if (err) {next(err)};
+                        })
                     }
                     else{
                         return res.json({success:false,message:"Failed to authenticate token"});
@@ -156,17 +160,12 @@ apiRoutes.get("/",function(req,res){
 });
 
 apiRoutes.get("/users",function(req,res){
-    User.find({},function(err,users){
+    User.run(function(err,users){
         res.json({users:users,jwt: req.token, refresh_token: req.refresh_token});
-    });
-});
-apiRoutes.get("/darmish",function(req,res){
-    User.findOne({name:req.query.darmish},function(err,users){
-        res.json({user:users});
     });
 });
 
 app.use("/api",apiRoutes);
 
 app.listen(port);
-console.log('Magic happens at http://localhost:' + port);
+console.log('Stuff happens at http://localhost:' + port);
