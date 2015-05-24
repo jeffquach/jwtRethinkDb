@@ -7,7 +7,6 @@ var bcrypt = require("bcrypt");
 var jwt = require('jsonwebtoken');
 var User = require('./app/models/user');
 var crypto = require('crypto');
-var util = require('util');
 
 var port = process.env.PORT || 3000;
 
